@@ -23,6 +23,7 @@ fun DashboardScreen(
     viewModel: DashboardViewModel,
     onSensorClick: (Int) -> Unit,
     onScriptsClick: () -> Unit,
+    onFlowsClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onDisconnected: () -> Unit
 ) {
@@ -60,6 +61,9 @@ fun DashboardScreen(
             TopAppBar(
                 title = { Text("Homesoil") },
                 actions = {
+                    IconButton(onClick = onFlowsClick) {
+                        Icon(Icons.Default.AccountTree, contentDescription = "Flows")
+                    }
                     IconButton(onClick = onScriptsClick) {
                         Icon(Icons.Default.Code, contentDescription = "Scripts")
                     }

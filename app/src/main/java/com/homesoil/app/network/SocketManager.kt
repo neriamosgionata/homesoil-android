@@ -2,6 +2,7 @@ package com.homesoil.app.network
 
 import android.util.Log
 import com.homesoil.app.data.models.*
+import com.homesoil.app.data.models.DeviceFlow
 import io.socket.client.IO
 import io.socket.client.Socket
 import kotlinx.coroutines.CoroutineScope
@@ -42,6 +43,9 @@ class SocketManager {
     private val _scripts = MutableStateFlow<Map<Int, Script>>(emptyMap())
     val scripts: StateFlow<Map<Int, Script>> = _scripts
 
+    private val _flows = MutableStateFlow<Map<Int, DeviceFlow>>(emptyMap())
+    val flows: StateFlow<Map<Int, DeviceFlow>> = _flows
+
     private val _sensorReadings = MutableStateFlow<List<SensorRead>>(emptyList())
     val sensorReadings: StateFlow<List<SensorRead>> = _sensorReadings
 
@@ -69,6 +73,7 @@ class SocketManager {
                 setupSensorListeners()
                 setupActuatorListeners()
                 setupScriptListeners()
+                setupFlowListeners()
                 setupMessageListeners()
                 connect()
             }
@@ -96,6 +101,7 @@ class SocketManager {
         _lastSensorReads.value = emptyMap()
         _actuators.value = emptyMap()
         _scripts.value = emptyMap()
+        _flows.value = emptyMap()
         _sensorReadings.value = emptyList()
     }
 
@@ -207,6 +213,28 @@ class SocketManager {
 
         on(SocketEvents.Listen.SCRIPT_SCHEDULE_REMOVED) { args ->
             handleScriptScheduleRemoved(args)
+        }
+    }
+
+    private fun Socket.setupFlowListeners() {
+        on(SocketEvents.Listen.ALL_FLOWS) { args ->
+            handleAllFlows(args)
+        }
+
+        on(SocketEvents.Listen.FLOW_SAVED) { args ->
+            handleFlowSaved(args)
+        }
+
+        on(SocketEvents.Listen.FLOW_MODIFIED) { args ->
+            handleFlowModified(args)
+        }
+
+        on(SocketEvents.Listen.FLOW_DELETED) { args ->
+            handleFlowDeleted(args)
+        }
+
+        on(SocketEvents.Listen.FLOW_TOGGLED) { args ->
+            handleFlowToggled(args)
         }
     }
 
@@ -569,7 +597,7 @@ class SocketManager {
                 put("id", sensorId)
                 put("from_date", fromDate)
                 put("to_date", toDate)
-            }
+            }.toString()
         )
     }
 
@@ -579,7 +607,7 @@ class SocketManager {
             JSONObject().apply {
                 put("id", sensorId)
                 put("name", name)
-            }
+            }.toString()
         )
     }
 
@@ -588,7 +616,7 @@ class SocketManager {
             SocketEvents.Emit.REMOVE_SENSOR,
             JSONObject().apply {
                 put("id", sensorId)
-            }
+            }.toString()
         )
     }
 
@@ -607,7 +635,7 @@ class SocketManager {
             JSONObject().apply {
                 put("id", actuatorId)
                 put("name", name)
-            }
+            }.toString()
         )
     }
 
@@ -616,7 +644,7 @@ class SocketManager {
             SocketEvents.Emit.REMOVE_ACTUATOR,
             JSONObject().apply {
                 put("id", actuatorId)
-            }
+            }.toString()
         )
     }
 
@@ -635,7 +663,7 @@ class SocketManager {
             JSONObject().apply {
                 put("title", title)
                 put("code", code)
-            }
+            }.toString()
         )
     }
 
@@ -646,17 +674,12 @@ class SocketManager {
                 put("id", scriptId)
                 put("title", title)
                 put("code", code)
-            }
+            }.toString()
         )
     }
 
     fun removeScript(scriptId: Int) {
-        socket?.emit(
-            SocketEvents.Emit.REMOVE_SCRIPT,
-            JSONObject().apply {
-                put("id", scriptId)
-            }
-        )
+        socket?.emit(SocketEvents.Emit.REMOVE_SCRIPT, scriptId)
     }
 
     fun addScriptSchedule(scriptId: Int, schedule: String) {
@@ -665,7 +688,112 @@ class SocketManager {
             JSONObject().apply {
                 put("id", scriptId)
                 put("schedule", schedule)
+            }.toString()
+        )
+    }
+
+    // Flow event handlers
+    private fun handleAllFlows(args: Array<Any>) {
+        try {
+            val data = args.firstOrNull() as? JSONObject ?: return
+            val flowsArray = data.getJSONArray("flows")
+            val flowsMap = mutableMapOf<Int, DeviceFlow>()
+
+            for (i in 0 until flowsArray.length()) {
+                val flowJson = flowsArray.getJSONObject(i)
+                val flow = json.decodeFromString<DeviceFlow>(flowJson.toString())
+                flowsMap[flow.id] = flow
             }
+
+            _flows.value = flowsMap
+            Log.d(TAG, "Received ${flowsMap.size} flows")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parsing all flows", e)
+        }
+    }
+
+    private fun handleFlowSaved(args: Array<Any>) {
+        try {
+            val data = args.firstOrNull() as? JSONObject ?: return
+            val flowObj = data.optJSONObject("flow") ?: data
+            val flow = json.decodeFromString<DeviceFlow>(flowObj.toString())
+            _flows.value = _flows.value + (flow.id to flow)
+            Log.d(TAG, "Flow saved: ${flow.id}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parsing flow saved", e)
+        }
+    }
+
+    private fun handleFlowModified(args: Array<Any>) {
+        try {
+            val data = args.firstOrNull() as? JSONObject ?: return
+            val flowObj = data.optJSONObject("flow") ?: data
+            val flow = json.decodeFromString<DeviceFlow>(flowObj.toString())
+            _flows.value = _flows.value + (flow.id to flow)
+            Log.d(TAG, "Flow modified: ${flow.id}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parsing flow modified", e)
+        }
+    }
+
+    private fun handleFlowDeleted(args: Array<Any>) {
+        try {
+            val data = args.firstOrNull() as? JSONObject ?: return
+            val flowId = data.getInt("flow_id")
+            _flows.value = _flows.value - flowId
+            Log.d(TAG, "Flow deleted: $flowId")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parsing flow deleted", e)
+        }
+    }
+
+    private fun handleFlowToggled(args: Array<Any>) {
+        try {
+            val data = args.firstOrNull() as? JSONObject ?: return
+            val flowObj = data.optJSONObject("flow") ?: data
+            val flow = json.decodeFromString<DeviceFlow>(flowObj.toString())
+            _flows.value = _flows.value + (flow.id to flow)
+            Log.d(TAG, "Flow toggled: ${flow.id} -> ${flow.enabled}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parsing flow toggled", e)
+        }
+    }
+
+    // Emit methods - Flows
+    fun addFlow(title: String, graph: String) {
+        socket?.emit(
+            SocketEvents.Emit.ADD_FLOW,
+            JSONObject().apply {
+                put("title", title)
+                put("graph", graph)
+                put("enabled", false)
+            }.toString()
+        )
+    }
+
+    fun modifyFlow(id: Int, title: String, graph: String, enabled: Boolean) {
+        socket?.emit(
+            SocketEvents.Emit.MODIFY_FLOW,
+            JSONObject().apply {
+                put("id", id)
+                put("title", title)
+                put("graph", graph)
+                put("enabled", enabled)
+            }.toString()
+        )
+    }
+
+    fun removeFlow(flowId: Int) {
+        socket?.emit(SocketEvents.Emit.REMOVE_FLOW, flowId)
+    }
+
+    fun toggleFlow(flowId: Int, enabled: Boolean) {
+        socket?.emit(
+            SocketEvents.Emit.TOGGLE_FLOW,
+            JSONObject().apply {
+                put("id", flowId)
+                put("enabled", enabled)
+            }.toString()
         )
     }
 
@@ -674,7 +802,7 @@ class SocketManager {
             SocketEvents.Emit.REMOVE_SCRIPT_SCHEDULE,
             JSONObject().apply {
                 put("id", scriptId)
-            }
+            }.toString()
         )
     }
 

@@ -29,3 +29,12 @@ val WindColor = Color(0xFF4DB6AC)
 val RainColor = Color(0xFF7986CB)
 val UVColor = Color(0xFFFFB74D)
 val SolarColor = Color(0xFFFFF176)
+
+// Flow node colors
+val NodeSensorColor = Color(0xFF4CAF50)
+val NodeActuatorColor = Color(0xFFF44336)
+val NodeComparisonColor = Color(0xFF9C27B0)
+val NodeLogicColor = Color(0xFFFFC107)
+val NodeConstantColor = Color(0xFF2196F3)
+val FlowEnabledColor = Color(0xFF4CAF50)
+val FlowDisabledColor = Color(0xFF757575)

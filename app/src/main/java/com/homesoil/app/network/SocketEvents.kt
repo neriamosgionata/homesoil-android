@@ -22,6 +22,12 @@ object SocketEvents {
         const val MODIFY_SCRIPT = "modify-script"
         const val ADD_SCRIPT_SCHEDULE = "add-script-schedule"
         const val REMOVE_SCRIPT_SCHEDULE = "remove-script-schedule"
+
+        // Flow events
+        const val ADD_FLOW = "add-flow"
+        const val MODIFY_FLOW = "modify-flow"
+        const val REMOVE_FLOW = "remove-flow"
+        const val TOGGLE_FLOW = "toggle-flow"
     }
 
     // Listen events (Backend -> App)
@@ -55,5 +61,12 @@ object SocketEvents {
         const val SCRIPT_STATUS_CHANGE = "script-status-change"
         const val SCRIPT_SCHEDULE_ADDED = "script-schedule-added"
         const val SCRIPT_SCHEDULE_REMOVED = "script-schedule-removed"
+
+        // Flow events
+        const val ALL_FLOWS = "all-flows"
+        const val FLOW_SAVED = "flow-saved"
+        const val FLOW_MODIFIED = "flow-modified"
+        const val FLOW_DELETED = "flow-deleted"
+        const val FLOW_TOGGLED = "flow-toggled"
     }
 }

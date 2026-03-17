@@ -12,6 +12,10 @@ import com.homesoil.app.ui.screens.dashboard.DashboardScreen
 import com.homesoil.app.ui.screens.dashboard.DashboardViewModel
 import com.homesoil.app.ui.screens.login.LoginScreen
 import com.homesoil.app.ui.screens.login.LoginViewModel
+import com.homesoil.app.ui.screens.flows.FlowEditorScreen
+import com.homesoil.app.ui.screens.flows.FlowEditorViewModel
+import com.homesoil.app.ui.screens.flows.FlowsScreen
+import com.homesoil.app.ui.screens.flows.FlowsViewModel
 import com.homesoil.app.ui.screens.scripts.ScriptEditorScreen
 import com.homesoil.app.ui.screens.scripts.ScriptEditorViewModel
 import com.homesoil.app.ui.screens.scripts.ScriptsScreen
@@ -28,10 +32,14 @@ object Routes {
     const val SCRIPTS = "scripts"
     const val SCRIPT_EDITOR = "script/{scriptId}"
     const val SCRIPT_NEW = "script/new"
+    const val FLOWS = "flows"
+    const val FLOW_EDITOR = "flow/{flowId}"
+    const val FLOW_NEW = "flow/new"
     const val SETTINGS = "settings"
 
     fun sensorDetail(sensorId: Int) = "sensor/$sensorId"
     fun scriptEditor(scriptId: Int) = "script/$scriptId"
+    fun flowEditor(flowId: Int) = "flow/$flowId"
 }
 
 @Composable
@@ -65,6 +73,9 @@ fun NavGraph(
                 },
                 onScriptsClick = {
                     navController.navigate(Routes.SCRIPTS)
+                },
+                onFlowsClick = {
+                    navController.navigate(Routes.FLOWS)
                 },
                 onSettingsClick = {
                     navController.navigate(Routes.SETTINGS)
@@ -118,6 +129,40 @@ fun NavGraph(
         composable(Routes.SCRIPT_NEW) {
             val viewModel = remember { ScriptEditorViewModel(repository, null) }
             ScriptEditorScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.FLOWS) {
+            val viewModel = remember { FlowsViewModel(repository) }
+            FlowsScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() },
+                onFlowClick = { flowId ->
+                    navController.navigate(Routes.flowEditor(flowId))
+                },
+                onNewFlow = {
+                    navController.navigate(Routes.FLOW_NEW)
+                }
+            )
+        }
+
+        composable(
+            route = Routes.FLOW_EDITOR,
+            arguments = listOf(navArgument("flowId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val flowId = backStackEntry.arguments?.getInt("flowId") ?: return@composable
+            val viewModel = remember { FlowEditorViewModel(repository, flowId) }
+            FlowEditorScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.FLOW_NEW) {
+            val viewModel = remember { FlowEditorViewModel(repository, null) }
+            FlowEditorScreen(
                 viewModel = viewModel,
                 onBack = { navController.popBackStack() }
             )

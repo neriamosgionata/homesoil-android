@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.homesoil.app.data.models.*
+import com.homesoil.app.data.models.DeviceFlow
 import com.homesoil.app.network.ConnectionState
 import com.homesoil.app.network.SocketManager
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +31,7 @@ class HomesoilRepository(private val context: Context) {
     val lastSensorReads: StateFlow<Map<Int, SensorRead>> = socketManager.lastSensorReads
     val actuators: StateFlow<Map<Int, Actuator>> = socketManager.actuators
     val scripts: StateFlow<Map<Int, Script>> = socketManager.scripts
+    val flows: StateFlow<Map<Int, DeviceFlow>> = socketManager.flows
     val sensorReadings: StateFlow<List<SensorRead>> = socketManager.sensorReadings
     val messages: SharedFlow<DashboardMessage> = socketManager.messages
     val connectionError: SharedFlow<String> = socketManager.connectionError
@@ -132,5 +134,22 @@ class HomesoilRepository(private val context: Context) {
 
     fun removeScriptSchedule(scriptId: Int) {
         socketManager.removeScriptSchedule(scriptId)
+    }
+
+    // Flow operations
+    fun addFlow(title: String, graph: String) {
+        socketManager.addFlow(title, graph)
+    }
+
+    fun modifyFlow(id: Int, title: String, graph: String, enabled: Boolean) {
+        socketManager.modifyFlow(id, title, graph, enabled)
+    }
+
+    fun removeFlow(flowId: Int) {
+        socketManager.removeFlow(flowId)
+    }
+
+    fun toggleFlow(flowId: Int, enabled: Boolean) {
+        socketManager.toggleFlow(flowId, enabled)
     }
 }
