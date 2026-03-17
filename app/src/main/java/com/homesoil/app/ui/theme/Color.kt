@@ -7,12 +7,12 @@ val HomesoilGreen = Color(0xFF4CAF50)
 val HomesoilGreenLight = Color(0xFF80E27E)
 val HomesoilGreenDark = Color(0xFF087F23)
 
-// Dark theme colors
-val DarkBackground = Color(0xFF121212)
-val DarkSurface = Color(0xFF1E1E1E)
-val DarkSurfaceVariant = Color(0xFF2D2D2D)
-val DarkOnSurface = Color(0xFFE0E0E0)
-val DarkOnSurfaceVariant = Color(0xFFBDBDBD)
+// Dark theme colors - Navy palette matching web frontend
+val DarkBackground = Color(0xFF0F172A)
+val DarkSurface = Color(0xFF1E293B)
+val DarkSurfaceVariant = Color(0xFF253349)
+val DarkOnSurface = Color(0xFFF8FAFC)
+val DarkOnSurfaceVariant = Color(0xFF94A3B8)
 
 // Status colors
 val OnlineGreen = Color(0xFF4CAF50)
