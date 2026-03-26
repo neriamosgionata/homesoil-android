@@ -1,7 +1,10 @@
 package com.homesoil.app.ui.screens.login
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -28,6 +31,8 @@ fun LoginScreen(
     val error by viewModel.error.collectAsState()
     val isConnecting by viewModel.isConnecting.collectAsState(initial = false)
     val isConnected by viewModel.isConnected.collectAsState(initial = false)
+    val isScanning by viewModel.isScanning.collectAsState()
+    val discoveredServers by viewModel.discoveredServers.collectAsState()
 
     var showToken by remember { mutableStateOf(false) }
 
@@ -70,6 +75,7 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(48.dp))
 
+            // Server Address with scan button
             OutlinedTextField(
                 value = serverHost,
                 onValueChange = viewModel::updateServerHost,
@@ -78,10 +84,83 @@ fun LoginScreen(
                 leadingIcon = {
                     Icon(Icons.Default.Dns, contentDescription = null)
                 },
+                trailingIcon = {
+                    IconButton(
+                        onClick = viewModel::scanNetwork,
+                        enabled = !isScanning && !isConnecting
+                    ) {
+                        if (isScanning) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.WifiFind,
+                                contentDescription = "Scan network"
+                            )
+                        }
+                    }
+                },
                 singleLine = true,
                 enabled = !isConnecting,
                 modifier = Modifier.fillMaxWidth()
             )
+
+            // Discovered servers list
+            AnimatedVisibility(visible = discoveredServers.isNotEmpty()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(8.dp)
+                    ) {
+                        Text(
+                            text = "Found servers:",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        discoveredServers.forEach { server ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { viewModel.selectServer(server) }
+                                    .padding(vertical = 8.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Computer,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = HomesoilGreen
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = server,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                if (server == serverHost) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = "Selected",
+                                        modifier = Modifier.size(18.dp),
+                                        tint = HomesoilGreen
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 

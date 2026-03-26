@@ -2,6 +2,7 @@ package com.homesoil.app.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -53,7 +54,8 @@ fun NavGraph(
         startDestination = startDestination
     ) {
         composable(Routes.LOGIN) {
-            val viewModel = remember { LoginViewModel(repository) }
+            val context = LocalContext.current
+            val viewModel = remember { LoginViewModel(repository, context.applicationContext) }
             LoginScreen(
                 viewModel = viewModel,
                 onConnected = {

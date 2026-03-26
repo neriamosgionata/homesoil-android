@@ -41,6 +41,14 @@ class DashboardViewModel(
         repository.pulseActuator(actuatorId)
     }
 
+    fun intermittentActuator(actuatorId: Int, onMs: Int, offMs: Int) {
+        repository.intermittentActuator(actuatorId, onMs, offMs)
+    }
+
+    fun stopIntermittentActuator(actuatorId: Int) {
+        repository.stopIntermittentActuator(actuatorId)
+    }
+
     fun renameActuator(actuatorId: Int, name: String) {
         repository.renameActuator(actuatorId, name)
     }

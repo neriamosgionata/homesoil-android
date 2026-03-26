@@ -181,6 +181,10 @@ class SocketManager {
             handleActuatorStateChange(args)
         }
 
+        on(SocketEvents.Listen.ACTUATOR_INTERMITTENT_CHANGE) { args ->
+            handleActuatorIntermittentChange(args)
+        }
+
         on(SocketEvents.Listen.ACTUATOR_CHANGE_ONLINE) { args ->
             handleActuatorChangeOnline(args)
         }
@@ -410,6 +414,9 @@ class SocketManager {
                 online = data.getBoolean("online"),
                 state = data.getBoolean("actuator_state"),
                 pulse = data.getBoolean("actuator_pulse"),
+                intermittent = data.optBoolean("intermittent", false),
+                intermittentOnMs = data.optInt("intermittent_on_ms", 0),
+                intermittentOffMs = data.optInt("intermittent_off_ms", 0),
                 createdAt = data.getString("created_at")
             )
             _actuators.value = _actuators.value + (actuator.id to actuator)
@@ -457,6 +464,27 @@ class SocketManager {
             Log.d(TAG, "Actuator state change: $actuatorId -> $state")
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing actuator state change", e)
+        }
+    }
+
+    private fun handleActuatorIntermittentChange(args: Array<Any>) {
+        try {
+            val data = args.firstOrNull() as? JSONObject ?: return
+            val actuatorId = data.getInt("actuator_id")
+            val intermittent = data.getBoolean("intermittent")
+            val onMs = data.optInt("intermittent_on_ms", 0)
+            val offMs = data.optInt("intermittent_off_ms", 0)
+
+            _actuators.value[actuatorId]?.let { actuator ->
+                _actuators.value = _actuators.value + (actuatorId to actuator.copy(
+                    intermittent = intermittent,
+                    intermittentOnMs = onMs,
+                    intermittentOffMs = offMs
+                ))
+            }
+            Log.d(TAG, "Actuator intermittent change: $actuatorId -> $intermittent")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parsing actuator intermittent change", e)
         }
     }
 
@@ -627,6 +655,21 @@ class SocketManager {
 
     fun pulseActuator(actuatorId: Int) {
         socket?.emit(SocketEvents.Emit.PULSE_ACTUATOR, actuatorId)
+    }
+
+    fun intermittentActuator(actuatorId: Int, onMs: Int, offMs: Int) {
+        socket?.emit(
+            SocketEvents.Emit.INTERMITTENT_ACTUATOR,
+            JSONObject().apply {
+                put("actuator_id", actuatorId)
+                put("on_ms", onMs)
+                put("off_ms", offMs)
+            }.toString()
+        )
+    }
+
+    fun stopIntermittentActuator(actuatorId: Int) {
+        socket?.emit(SocketEvents.Emit.STOP_INTERMITTENT_ACTUATOR, actuatorId)
     }
 
     fun renameActuator(actuatorId: Int, name: String) {

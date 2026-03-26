@@ -11,6 +11,8 @@ object SocketEvents {
         // Actuator events
         const val TOGGLE_ACTUATOR = "toggle-actuator"
         const val PULSE_ACTUATOR = "pulse-actuator"
+        const val INTERMITTENT_ACTUATOR = "intermittent-actuator"
+        const val STOP_INTERMITTENT_ACTUATOR = "stop-intermittent-actuator"
         const val RENAME_ACTUATOR = "rename-actuator"
         const val REMOVE_ACTUATOR = "remove-actuator"
 
@@ -51,6 +53,7 @@ object SocketEvents {
         const val ACTUATOR_UNREGISTER = "actuator-unregister"
         const val ACTUATOR_NAME_CHANGE = "actuator-name-change"
         const val ACTUATOR_STATE_CHANGE = "actuator-state-change"
+        const val ACTUATOR_INTERMITTENT_CHANGE = "actuator-intermittent-change"
         const val ACTUATOR_CHANGE_ONLINE = "actuator-change-online"
 
         // Script events

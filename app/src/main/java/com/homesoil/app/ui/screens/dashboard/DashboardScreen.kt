@@ -118,6 +118,8 @@ fun DashboardScreen(
                     actuators = actuators,
                     onToggle = viewModel::toggleActuator,
                     onPulse = viewModel::pulseActuator,
+                    onIntermittent = viewModel::intermittentActuator,
+                    onStopIntermittent = viewModel::stopIntermittentActuator,
                     onRename = viewModel::renameActuator
                 )
             }
@@ -160,6 +162,8 @@ private fun ActuatorsTab(
     actuators: Map<Int, com.homesoil.app.data.models.Actuator>,
     onToggle: (Int) -> Unit,
     onPulse: (Int) -> Unit,
+    onIntermittent: (Int, Int, Int) -> Unit,
+    onStopIntermittent: (Int) -> Unit,
     onRename: (Int, String) -> Unit
 ) {
     if (actuators.isEmpty()) {
@@ -180,6 +184,8 @@ private fun ActuatorsTab(
                     actuator = actuator,
                     onToggle = { onToggle(actuator.id) },
                     onPulse = { onPulse(actuator.id) },
+                    onIntermittent = { onMs, offMs -> onIntermittent(actuator.id, onMs, offMs) },
+                    onStopIntermittent = { onStopIntermittent(actuator.id) },
                     onRename = { name -> onRename(actuator.id, name) }
                 )
             }

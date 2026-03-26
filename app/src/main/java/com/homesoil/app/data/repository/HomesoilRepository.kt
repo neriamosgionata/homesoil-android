@@ -99,6 +99,14 @@ class HomesoilRepository(private val context: Context) {
         socketManager.pulseActuator(actuatorId)
     }
 
+    fun intermittentActuator(actuatorId: Int, onMs: Int, offMs: Int) {
+        socketManager.intermittentActuator(actuatorId, onMs, offMs)
+    }
+
+    fun stopIntermittentActuator(actuatorId: Int) {
+        socketManager.stopIntermittentActuator(actuatorId)
+    }
+
     fun renameActuator(actuatorId: Int, name: String) {
         socketManager.renameActuator(actuatorId, name)
     }

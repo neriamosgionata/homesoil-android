@@ -13,6 +13,11 @@ data class Actuator(
     val online: Boolean,
     val state: Boolean,
     val pulse: Boolean,
+    val intermittent: Boolean = false,
+    @SerialName("intermittent_on_ms")
+    val intermittentOnMs: Int = 0,
+    @SerialName("intermittent_off_ms")
+    val intermittentOffMs: Int = 0,
     @SerialName("created_at")
     val createdAt: String,
     @SerialName("updated_at")
