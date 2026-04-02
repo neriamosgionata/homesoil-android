@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.homesoil.app.data.models.Script
 import com.homesoil.app.data.repository.HomesoilRepository
+import com.homesoil.app.util.ScriptError
+import com.homesoil.app.util.ScriptValidator
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -56,6 +58,13 @@ class ScriptEditorViewModel(
 
     private val _code = MutableStateFlow("")
     val code: StateFlow<String> = _code
+
+    val validationErrors: StateFlow<List<ScriptError>> = _code.map { code ->
+        if (code.isBlank()) emptyList() else ScriptValidator.validate(code)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val hasErrors: StateFlow<Boolean> = validationErrors.map { it.isNotEmpty() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     private val _schedule = MutableStateFlow("")
     val schedule: StateFlow<String> = _schedule

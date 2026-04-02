@@ -27,9 +27,11 @@ fun ActuatorCard(
     onIntermittent: (onMs: Int, offMs: Int) -> Unit,
     onStopIntermittent: () -> Unit,
     onRename: (String) -> Unit,
+    onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showRenameDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     var newName by remember { mutableStateOf(actuator.displayName) }
     var showIntermittentConfig by remember { mutableStateOf(false) }
     var onMs by remember { mutableStateOf("1000") }
@@ -81,6 +83,17 @@ fun ActuatorCard(
                         Icon(
                             imageVector = Icons.Default.Edit,
                             contentDescription = "Rename",
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    IconButton(
+                        onClick = { showDeleteDialog = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -286,6 +299,32 @@ fun ActuatorCard(
             },
             dismissButton = {
                 TextButton(onClick = { showRenameDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Actuator") },
+            text = { Text("Are you sure you want to delete this actuator? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDelete()
+                        showDeleteDialog = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
                     Text("Cancel")
                 }
             }

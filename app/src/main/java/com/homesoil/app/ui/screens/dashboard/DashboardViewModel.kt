@@ -53,6 +53,10 @@ class DashboardViewModel(
         repository.renameActuator(actuatorId, name)
     }
 
+    fun removeActuator(actuatorId: Int) {
+        repository.removeActuator(actuatorId)
+    }
+
     fun disconnect() {
         repository.disconnect()
     }

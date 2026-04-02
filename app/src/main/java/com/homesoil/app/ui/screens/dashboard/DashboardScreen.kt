@@ -120,7 +120,8 @@ fun DashboardScreen(
                     onPulse = viewModel::pulseActuator,
                     onIntermittent = viewModel::intermittentActuator,
                     onStopIntermittent = viewModel::stopIntermittentActuator,
-                    onRename = viewModel::renameActuator
+                    onRename = viewModel::renameActuator,
+                    onDelete = viewModel::removeActuator
                 )
             }
         }
@@ -164,7 +165,8 @@ private fun ActuatorsTab(
     onPulse: (Int) -> Unit,
     onIntermittent: (Int, Int, Int) -> Unit,
     onStopIntermittent: (Int) -> Unit,
-    onRename: (Int, String) -> Unit
+    onRename: (Int, String) -> Unit,
+    onDelete: (Int) -> Unit
 ) {
     if (actuators.isEmpty()) {
         EmptyState(
@@ -186,7 +188,8 @@ private fun ActuatorsTab(
                     onPulse = { onPulse(actuator.id) },
                     onIntermittent = { onMs, offMs -> onIntermittent(actuator.id, onMs, offMs) },
                     onStopIntermittent = { onStopIntermittent(actuator.id) },
-                    onRename = { name -> onRename(actuator.id, name) }
+                    onRename = { name -> onRename(actuator.id, name) },
+                    onDelete = { onDelete(actuator.id) }
                 )
             }
         }

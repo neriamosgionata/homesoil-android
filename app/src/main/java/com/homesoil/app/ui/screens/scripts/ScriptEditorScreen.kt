@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.homesoil.app.ui.components.CronInput
 import com.homesoil.app.ui.components.validateCron
 import com.homesoil.app.ui.theme.HomesoilGreen
+import com.homesoil.app.util.ScriptError
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,9 +27,11 @@ fun ScriptEditorScreen(
     val title by viewModel.title.collectAsState()
     val code by viewModel.code.collectAsState()
     val schedule by viewModel.schedule.collectAsState()
+    val validationErrors by viewModel.validationErrors.collectAsState()
+    val hasErrors by viewModel.hasErrors.collectAsState()
 
     var showDeleteDialog by remember { mutableStateOf(false) }
-    val isValid = title.isNotBlank() && code.isNotBlank()
+    val isValid = title.isNotBlank() && code.isNotBlank() && !hasErrors
     val isScheduleValid = validateCron(schedule)
 
     Scaffold(
@@ -81,15 +84,50 @@ fun ScriptEditorScreen(
                 value = code,
                 onValueChange = viewModel::updateCode,
                 label = { Text("Code") },
-                placeholder = { Text("// Write your script here\ntoggle_actuator(1)") },
+                placeholder = { Text("RUN\nACTIVATE 1\nSTOP") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 200.dp),
                 textStyle = LocalTextStyle.current.copy(
                     fontFamily = FontFamily.Monospace
                 ),
+                isError = hasErrors && code.isNotBlank(),
                 minLines = 10
             )
+
+            // Validation errors
+            if (validationErrors.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = "Validation Errors",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        validationErrors.forEach { error ->
+                            Text(
+                                text = "Line ${error.line}: ${error.message}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            error.argErrors.forEach { argError ->
+                                Text(
+                                    text = "  Arg ${argError.arg}: ${argError.message}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                        }
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
