@@ -56,12 +56,12 @@ class SensorDetailViewModel(
         _isLoading.value = true
         repository.getSensorReadings(
             sensorId = sensorId,
-            fromDate = DateUtils.formatDate(_fromDate.value),
-            toDate = DateUtils.formatDate(_toDate.value)
+            fromDate = DateUtils.formatFromDate(_fromDate.value),
+            toDate = DateUtils.formatToDate(_toDate.value)
         )
         viewModelScope.launch {
-            // Watch for readings to stop loading indicator
-            readings.first { it.isNotEmpty() || !_isLoading.value }
+            // Server always answers with all-sensor-reads; stop loading when it arrives
+            repository.readingsLoading.filter { !it }.first()
             _isLoading.value = false
         }
     }

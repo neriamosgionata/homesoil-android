@@ -26,6 +26,7 @@ fun LoginScreen(
     onConnected: () -> Unit
 ) {
     val token by viewModel.token.collectAsState()
+    val pin by viewModel.pin.collectAsState()
     val serverHost by viewModel.serverHost.collectAsState()
     val serverPort by viewModel.serverPort.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -180,27 +181,43 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            OutlinedTextField(
-                value = token,
-                onValueChange = viewModel::updateToken,
-                label = { Text("Authentication Token") },
-                placeholder = { Text("Enter your token") },
-                leadingIcon = {
-                    Icon(Icons.Default.Key, contentDescription = null)
-                },
-                trailingIcon = {
-                    IconButton(onClick = { showToken = !showToken }) {
-                        Icon(
-                            imageVector = if (showToken) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (showToken) "Hide token" else "Show token"
-                        )
-                    }
-                },
-                visualTransformation = if (showToken) VisualTransformation.None else PasswordVisualTransformation(),
-                singleLine = true,
-                enabled = !isConnecting,
-                modifier = Modifier.fillMaxWidth()
-            )
+            if (token.isBlank()) {
+                OutlinedTextField(
+                    value = pin,
+                    onValueChange = viewModel::updatePin,
+                    label = { Text("Pairing PIN") },
+                    placeholder = { Text("Enter the PIN shown on your server") },
+                    leadingIcon = {
+                        Icon(Icons.Default.Pin, contentDescription = null)
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    singleLine = true,
+                    enabled = !isConnecting,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                OutlinedTextField(
+                    value = token,
+                    onValueChange = viewModel::updateToken,
+                    label = { Text("Authentication Token") },
+                    placeholder = { Text("Enter your token") },
+                    leadingIcon = {
+                        Icon(Icons.Default.Key, contentDescription = null)
+                    },
+                    trailingIcon = {
+                        IconButton(onClick = { showToken = !showToken }) {
+                            Icon(
+                                imageVector = if (showToken) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (showToken) "Hide token" else "Show token"
+                            )
+                        }
+                    },
+                    visualTransformation = if (showToken) VisualTransformation.None else PasswordVisualTransformation(),
+                    singleLine = true,
+                    enabled = !isConnecting,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
 
             if (error != null) {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -231,7 +248,8 @@ fun LoginScreen(
 
             Button(
                 onClick = viewModel::connect,
-                enabled = !isConnecting && token.isNotBlank() && serverHost.isNotBlank(),
+                enabled = !isConnecting && serverHost.isNotBlank() &&
+                    (token.isNotBlank() || pin.isNotBlank()),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
@@ -247,7 +265,16 @@ fun LoginScreen(
                 } else {
                     Icon(Icons.Default.Login, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Connect")
+                    Text(if (token.isBlank()) "Pair" else "Connect")
+                }
+            }
+
+            if (token.isNotBlank()) {
+                TextButton(
+                    onClick = viewModel::clearPin,
+                    enabled = !isConnecting
+                ) {
+                    Text("Pair with new PIN")
                 }
             }
         }

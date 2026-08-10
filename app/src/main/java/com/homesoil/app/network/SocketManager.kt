@@ -49,19 +49,29 @@ class SocketManager {
     private val _sensorReadings = MutableStateFlow<List<SensorRead>>(emptyList())
     val sensorReadings: StateFlow<List<SensorRead>> = _sensorReadings
 
+    private val _readingsLoading = MutableStateFlow(false)
+    val readingsLoading: StateFlow<Boolean> = _readingsLoading
+
+    private val _sessionToken = MutableSharedFlow<String>()
+    val sessionToken: SharedFlow<String> = _sessionToken
+
     private val _messages = MutableSharedFlow<DashboardMessage>()
     val messages: SharedFlow<DashboardMessage> = _messages
 
     private val _connectionError = MutableSharedFlow<String>()
     val connectionError: SharedFlow<String> = _connectionError
 
-    fun connect(serverUrl: String, token: String) {
+    fun connect(serverUrl: String, token: String, pin: String? = null) {
         disconnect()
 
         try {
             val options = IO.Options().apply {
                 transports = arrayOf("websocket", "polling")
-                auth = mapOf("token" to token)
+                auth = if (!token.isBlank()) {
+                    mapOf("token" to token)
+                } else {
+                    mapOf("pin" to (pin ?: ""))
+                }
                 reconnection = true
                 reconnectionAttempts = 5
                 reconnectionDelay = 1000
@@ -103,6 +113,7 @@ class SocketManager {
         _scripts.value = emptyMap()
         _flows.value = emptyMap()
         _sensorReadings.value = emptyList()
+        _readingsLoading.value = false
     }
 
     private fun Socket.setupConnectionListeners() {
@@ -123,6 +134,22 @@ class SocketManager {
                 _connectionError.emit(error)
             }
             _connectionState.value = ConnectionState.ERROR
+        }
+
+        // Server issues a session token after successful PIN pairing
+        on("session_token") { args ->
+            try {
+                val data = args.firstOrNull() as? JSONObject ?: return@on
+                val token = data.getString("token")
+                if (token.isNotEmpty()) {
+                    scope.launch {
+                        _sessionToken.emit(token)
+                    }
+                    Log.d(TAG, "Session token received")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error parsing session token", e)
+            }
         }
     }
 
@@ -271,7 +298,7 @@ class SocketManager {
     private fun handleAllLastSensorReadings(args: Array<Any>) {
         try {
             val data = args.firstOrNull() as? JSONObject ?: return
-            val readsArray = data.getJSONArray("reads")
+            val readsArray = data.getJSONArray("sensor_reads")
             val readsMap = mutableMapOf<Int, SensorRead>()
 
             for (i in 0 until readsArray.length()) {
@@ -322,10 +349,11 @@ class SocketManager {
         try {
             val data = args.firstOrNull() as? JSONObject ?: return
             val sensorId = data.getInt("sensor_id")
-            val newName = data.getString("name")
+            val newName = data.getString("sensor_name")
+            val updatedAt = data.optString("updated_at").takeIf { it.isNotEmpty() }
 
             _sensors.value[sensorId]?.let { sensor ->
-                _sensors.value = _sensors.value + (sensorId to sensor.copy(name = newName))
+                _sensors.value = _sensors.value + (sensorId to sensor.copy(name = newName, updatedAt = updatedAt))
             }
             Log.d(TAG, "Sensor name changed: $sensorId -> $newName")
         } catch (e: Exception) {
@@ -343,6 +371,12 @@ class SocketManager {
                 createdAt = data.getString("created_at")
             )
             _lastSensorReads.value = _lastSensorReads.value + (read.sensorId to read)
+
+            // Live-update the readings list when viewing the sensor that produced this read
+            val currentReadings = _sensorReadings.value
+            if (currentReadings.isNotEmpty() && currentReadings.first().sensorId == read.sensorId) {
+                _sensorReadings.value = listOf(read) + currentReadings
+            }
             Log.d(TAG, "Sensor read: ${read.sensorId} = ${read.sensorValue}")
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing sensor read", e)
@@ -352,7 +386,7 @@ class SocketManager {
     private fun handleAllSensorReadings(args: Array<Any>) {
         try {
             val data = args.firstOrNull() as? JSONObject ?: return
-            val readsArray = data.getJSONArray("reads")
+            val readsArray = data.getJSONArray("sensor_reads")
             val reads = mutableListOf<SensorRead>()
 
             for (i in 0 until readsArray.length()) {
@@ -362,8 +396,10 @@ class SocketManager {
             }
 
             _sensorReadings.value = reads.sortedBy { it.createdAt }
+            _readingsLoading.value = false
             Log.d(TAG, "Received ${reads.size} sensor readings")
         } catch (e: Exception) {
+            _readingsLoading.value = false
             Log.e(TAG, "Error parsing all sensor readings", e)
         }
     }
@@ -373,9 +409,10 @@ class SocketManager {
             val data = args.firstOrNull() as? JSONObject ?: return
             val sensorId = data.getInt("sensor_id")
             val online = data.getBoolean("online")
+            val updatedAt = data.optString("updated_at").takeIf { it.isNotEmpty() }
 
             _sensors.value[sensorId]?.let { sensor ->
-                _sensors.value = _sensors.value + (sensorId to sensor.copy(online = online))
+                _sensors.value = _sensors.value + (sensorId to sensor.copy(online = online, updatedAt = updatedAt))
             }
             Log.d(TAG, "Sensor online change: $sensorId -> $online")
         } catch (e: Exception) {
@@ -415,8 +452,8 @@ class SocketManager {
                 state = data.getBoolean("actuator_state"),
                 pulse = data.getBoolean("actuator_pulse"),
                 intermittent = data.optBoolean("intermittent", false),
-                intermittentOnMs = data.optInt("intermittent_on_ms", 0),
-                intermittentOffMs = data.optInt("intermittent_off_ms", 0),
+                intermittentOnMs = data.optInt("intermittent_on_ms", 1000),
+                intermittentOffMs = data.optInt("intermittent_off_ms", 1000),
                 createdAt = data.getString("created_at")
             )
             _actuators.value = _actuators.value + (actuator.id to actuator)
@@ -441,10 +478,11 @@ class SocketManager {
         try {
             val data = args.firstOrNull() as? JSONObject ?: return
             val actuatorId = data.getInt("actuator_id")
-            val newName = data.getString("name")
+            val newName = data.getString("actuator_name")
+            val updatedAt = data.optString("updated_at").takeIf { it.isNotEmpty() }
 
             _actuators.value[actuatorId]?.let { actuator ->
-                _actuators.value = _actuators.value + (actuatorId to actuator.copy(name = newName))
+                _actuators.value = _actuators.value + (actuatorId to actuator.copy(name = newName, updatedAt = updatedAt))
             }
             Log.d(TAG, "Actuator name changed: $actuatorId -> $newName")
         } catch (e: Exception) {
@@ -472,14 +510,15 @@ class SocketManager {
             val data = args.firstOrNull() as? JSONObject ?: return
             val actuatorId = data.getInt("actuator_id")
             val intermittent = data.getBoolean("intermittent")
-            val onMs = data.optInt("intermittent_on_ms", 0)
-            val offMs = data.optInt("intermittent_off_ms", 0)
+            // Stop event omits on/off ms — keep last values in that case
+            val onMs = data.optInt("intermittent_on_ms", -1)
+            val offMs = data.optInt("intermittent_off_ms", -1)
 
             _actuators.value[actuatorId]?.let { actuator ->
                 _actuators.value = _actuators.value + (actuatorId to actuator.copy(
                     intermittent = intermittent,
-                    intermittentOnMs = onMs,
-                    intermittentOffMs = offMs
+                    intermittentOnMs = if (onMs >= 0) onMs else actuator.intermittentOnMs,
+                    intermittentOffMs = if (offMs >= 0) offMs else actuator.intermittentOffMs
                 ))
             }
             Log.d(TAG, "Actuator intermittent change: $actuatorId -> $intermittent")
@@ -493,9 +532,10 @@ class SocketManager {
             val data = args.firstOrNull() as? JSONObject ?: return
             val actuatorId = data.getInt("actuator_id")
             val online = data.getBoolean("online")
+            val updatedAt = data.optString("updated_at").takeIf { it.isNotEmpty() }
 
             _actuators.value[actuatorId]?.let { actuator ->
-                _actuators.value = _actuators.value + (actuatorId to actuator.copy(online = online))
+                _actuators.value = _actuators.value + (actuatorId to actuator.copy(online = online, updatedAt = updatedAt))
             }
             Log.d(TAG, "Actuator online change: $actuatorId -> $online")
         } catch (e: Exception) {
@@ -526,7 +566,8 @@ class SocketManager {
     private fun handleScriptSaved(args: Array<Any>) {
         try {
             val data = args.firstOrNull() as? JSONObject ?: return
-            val script = json.decodeFromString<Script>(data.toString())
+            val scriptObj = data.optJSONObject("script") ?: data
+            val script = json.decodeFromString<Script>(scriptObj.toString())
             _scripts.value = _scripts.value + (script.id to script)
             Log.d(TAG, "Script saved: ${script.id}")
         } catch (e: Exception) {
@@ -537,8 +578,17 @@ class SocketManager {
     private fun handleScriptDeleted(args: Array<Any>) {
         try {
             val data = args.firstOrNull() as? JSONObject ?: return
-            val scriptId = data.getInt("id")
-            _scripts.value = _scripts.value - scriptId
+            // Backend wraps the script object; parse defensively for any id location
+            val scriptObj = data.optJSONObject("script")
+            val scriptId = scriptObj?.optInt("id")
+                ?: data.optInt("id", -1)
+                .takeIf { it >= 0 }
+                ?: data.optInt("script_id", -1)
+                .takeIf { it >= 0 }
+
+            if (scriptId != null && scriptId >= 0) {
+                _scripts.value = _scripts.value - scriptId
+            }
             Log.d(TAG, "Script deleted: $scriptId")
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing script deleted", e)
@@ -548,7 +598,8 @@ class SocketManager {
     private fun handleScriptModified(args: Array<Any>) {
         try {
             val data = args.firstOrNull() as? JSONObject ?: return
-            val script = json.decodeFromString<Script>(data.toString())
+            val scriptObj = data.optJSONObject("script") ?: data
+            val script = json.decodeFromString<Script>(scriptObj.toString())
             _scripts.value = _scripts.value + (script.id to script)
             Log.d(TAG, "Script modified: ${script.id}")
         } catch (e: Exception) {
@@ -559,7 +610,7 @@ class SocketManager {
     private fun handleScriptStatusChange(args: Array<Any>) {
         try {
             val data = args.firstOrNull() as? JSONObject ?: return
-            val scriptId = data.getInt("id")
+            val scriptId = data.getInt("script_id")
             val status = data.getInt("status")
 
             _scripts.value[scriptId]?.let { script ->
@@ -574,13 +625,10 @@ class SocketManager {
     private fun handleScriptScheduleAdded(args: Array<Any>) {
         try {
             val data = args.firstOrNull() as? JSONObject ?: return
-            val scriptId = data.getInt("id")
-            val schedule = data.optString("schedule").takeIf { it.isNotEmpty() }
-
-            _scripts.value[scriptId]?.let { script ->
-                _scripts.value = _scripts.value + (scriptId to script.copy(schedule = schedule))
-            }
-            Log.d(TAG, "Script schedule added: $scriptId -> $schedule")
+            val scriptObj = data.optJSONObject("script") ?: data
+            val script = json.decodeFromString<Script>(scriptObj.toString())
+            _scripts.value = _scripts.value + (script.id to script)
+            Log.d(TAG, "Script schedule added: ${script.id} -> ${script.schedule}")
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing script schedule added", e)
         }
@@ -589,12 +637,10 @@ class SocketManager {
     private fun handleScriptScheduleRemoved(args: Array<Any>) {
         try {
             val data = args.firstOrNull() as? JSONObject ?: return
-            val scriptId = data.getInt("id")
-
-            _scripts.value[scriptId]?.let { script ->
-                _scripts.value = _scripts.value + (scriptId to script.copy(schedule = null))
-            }
-            Log.d(TAG, "Script schedule removed: $scriptId")
+            val scriptObj = data.optJSONObject("script") ?: data
+            val script = json.decodeFromString<Script>(scriptObj.toString())
+            _scripts.value = _scripts.value + (script.id to script)
+            Log.d(TAG, "Script schedule removed: ${script.id}")
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing script schedule removed", e)
         }
@@ -619,6 +665,7 @@ class SocketManager {
     // Emit methods - Sensors
     fun getSensorReadings(sensorId: Int, fromDate: String, toDate: String) {
         _sensorReadings.value = emptyList()
+        _readingsLoading.value = true
         socket?.emit(
             SocketEvents.Emit.GET_SENSOR_READINGS,
             JSONObject().apply {
@@ -700,38 +747,30 @@ class SocketManager {
         socket?.emit(SocketEvents.Emit.RUN_SCRIPT, scriptId)
     }
 
-    fun addScript(title: String, code: String) {
+    fun addScript(script: Script) {
         socket?.emit(
             SocketEvents.Emit.ADD_SCRIPT,
-            JSONObject().apply {
-                put("title", title)
-                put("code", code)
-            }.toString()
+            json.encodeToString(Script.serializer(), script)
         )
     }
 
-    fun modifyScript(scriptId: Int, title: String, code: String) {
+    fun modifyScript(script: Script) {
         socket?.emit(
             SocketEvents.Emit.MODIFY_SCRIPT,
-            JSONObject().apply {
-                put("id", scriptId)
-                put("title", title)
-                put("code", code)
-            }.toString()
+            json.encodeToString(Script.serializer(), script)
         )
     }
 
     fun removeScript(scriptId: Int) {
+        // Backend emits a broken delete payload (no id), so remove locally too
+        _scripts.value = _scripts.value - scriptId
         socket?.emit(SocketEvents.Emit.REMOVE_SCRIPT, scriptId)
     }
 
-    fun addScriptSchedule(scriptId: Int, schedule: String) {
+    fun addScriptSchedule(script: Script) {
         socket?.emit(
             SocketEvents.Emit.ADD_SCRIPT_SCHEDULE,
-            JSONObject().apply {
-                put("id", scriptId)
-                put("schedule", schedule)
-            }.toString()
+            json.encodeToString(Script.serializer(), script)
         )
     }
 
@@ -840,12 +879,11 @@ class SocketManager {
         )
     }
 
-    fun removeScriptSchedule(scriptId: Int) {
+    fun removeScriptSchedule(script: Script) {
+        val scheduleCleared = script.copy(schedule = null)
         socket?.emit(
             SocketEvents.Emit.REMOVE_SCRIPT_SCHEDULE,
-            JSONObject().apply {
-                put("id", scriptId)
-            }.toString()
+            json.encodeToString(Script.serializer(), scheduleCleared)
         )
     }
 

@@ -29,6 +29,16 @@ object DateUtils {
         return date.format(dateFormatter)
     }
 
+    // Backend parses "YYYY-MM-DD HH:MM:SS" (see get_sensor_readings) — date-only
+    // strings are rejected, so pad with the start/end of day.
+    fun formatFromDate(date: LocalDate): String {
+        return "${date.format(dateFormatter)} 00:00:00"
+    }
+
+    fun formatToDate(date: LocalDate): String {
+        return "${date.format(dateFormatter)} 23:59:59"
+    }
+
     fun formatDisplayDate(dateString: String): String {
         val dateTime = parseIsoDateTime(dateString) ?: return dateString
         return dateTime.format(displayDateFormatter)

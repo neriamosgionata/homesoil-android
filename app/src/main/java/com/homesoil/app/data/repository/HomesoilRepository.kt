@@ -33,6 +33,8 @@ class HomesoilRepository(private val context: Context) {
     val scripts: StateFlow<Map<Int, Script>> = socketManager.scripts
     val flows: StateFlow<Map<Int, DeviceFlow>> = socketManager.flows
     val sensorReadings: StateFlow<List<SensorRead>> = socketManager.sensorReadings
+    val readingsLoading: StateFlow<Boolean> = socketManager.readingsLoading
+    val sessionToken: SharedFlow<String> = socketManager.sessionToken
     val messages: SharedFlow<DashboardMessage> = socketManager.messages
     val connectionError: SharedFlow<String> = socketManager.connectionError
 
@@ -69,8 +71,8 @@ class HomesoilRepository(private val context: Context) {
         }
     }
 
-    fun connect(serverUrl: String, token: String) {
-        socketManager.connect(serverUrl, token)
+    fun connect(serverUrl: String, token: String, pin: String? = null) {
+        socketManager.connect(serverUrl, token, pin)
     }
 
     fun disconnect() {
@@ -124,24 +126,24 @@ class HomesoilRepository(private val context: Context) {
         socketManager.runScript(scriptId)
     }
 
-    fun addScript(title: String, code: String) {
-        socketManager.addScript(title, code)
+    fun addScript(script: Script) {
+        socketManager.addScript(script)
     }
 
-    fun modifyScript(scriptId: Int, title: String, code: String) {
-        socketManager.modifyScript(scriptId, title, code)
+    fun modifyScript(script: Script) {
+        socketManager.modifyScript(script)
     }
 
     fun removeScript(scriptId: Int) {
         socketManager.removeScript(scriptId)
     }
 
-    fun addScriptSchedule(scriptId: Int, schedule: String) {
-        socketManager.addScriptSchedule(scriptId, schedule)
+    fun addScriptSchedule(script: Script) {
+        socketManager.addScriptSchedule(script)
     }
 
-    fun removeScriptSchedule(scriptId: Int) {
-        socketManager.removeScriptSchedule(scriptId)
+    fun removeScriptSchedule(script: Script) {
+        socketManager.removeScriptSchedule(script)
     }
 
     // Flow operations

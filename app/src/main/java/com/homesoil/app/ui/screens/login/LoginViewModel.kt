@@ -26,6 +26,9 @@ class LoginViewModel(
     private val _token = MutableStateFlow("")
     val token: StateFlow<String> = _token
 
+    private val _pin = MutableStateFlow("")
+    val pin: StateFlow<String> = _pin
+
     private val _serverHost = MutableStateFlow("")
     val serverHost: StateFlow<String> = _serverHost
 
@@ -72,11 +75,27 @@ class LoginViewModel(
                 _error.value = errorMsg
             }
         }
+        viewModelScope.launch {
+            repository.sessionToken.collect { sessionToken ->
+                repository.saveAuthToken(sessionToken)
+                _token.value = sessionToken
+            }
+        }
     }
 
     fun updateToken(newToken: String) {
         _token.value = newToken
         _error.value = null
+    }
+
+    fun updatePin(newPin: String) {
+        _pin.value = newPin
+        _error.value = null
+    }
+
+    fun clearPin() {
+        _pin.value = ""
+        _token.value = ""
     }
 
     fun updateServerHost(host: String) {
@@ -173,24 +192,27 @@ class LoginViewModel(
         val host = _serverHost.value.trim()
         val port = _serverPort.value.toIntOrNull() ?: 4000
         val tokenValue = _token.value.trim()
+        val pinValue = _pin.value.trim()
 
         if (host.isEmpty()) {
             _error.value = "Server address is required"
             return
         }
 
-        if (tokenValue.isEmpty()) {
-            _error.value = "Token is required"
+        if (tokenValue.isEmpty() && pinValue.isEmpty()) {
+            _error.value = "Token or pairing PIN is required"
             return
         }
 
         viewModelScope.launch {
             repository.saveServerSettings(host, port)
-            repository.saveAuthToken(tokenValue)
+            if (tokenValue.isNotEmpty()) {
+                repository.saveAuthToken(tokenValue)
+            }
         }
 
         val serverUrl = "http://$host:$port"
-        repository.connect(serverUrl, tokenValue)
+        repository.connect(serverUrl, tokenValue, pinValue)
     }
 
     fun clearError() {

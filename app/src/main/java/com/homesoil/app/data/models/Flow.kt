@@ -28,6 +28,11 @@ data class FlowNodeData(
     @SerialName("actuator_id")
     val actuatorId: Int? = null,
     val pulse: Boolean? = null,
+    val intermittent: Boolean? = null,
+    @SerialName("intermittent_on_ms")
+    val intermittentOnMs: Int? = null,
+    @SerialName("intermittent_off_ms")
+    val intermittentOffMs: Int? = null,
     val operator: String? = null,
     val value: Double? = null
 )

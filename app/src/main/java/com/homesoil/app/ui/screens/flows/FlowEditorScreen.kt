@@ -574,6 +574,52 @@ private fun NodeConfigSheet(
                             Checkbox(checked = node.data.pulse == true, onCheckedChange = { onUpdateData(node.data.copy(pulse = it)) })
                             Text("Pulse mode", style = MaterialTheme.typography.bodySmall)
                         }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = node.data.intermittent == true,
+                                onCheckedChange = {
+                                    onUpdateData(
+                                        node.data.copy(
+                                            intermittent = it,
+                                            pulse = if (it) false else node.data.pulse,
+                                            intermittentOnMs = node.data.intermittentOnMs ?: 1000,
+                                            intermittentOffMs = node.data.intermittentOffMs ?: 1000
+                                        )
+                                    )
+                                }
+                            )
+                            Text("Intermittent mode", style = MaterialTheme.typography.bodySmall)
+                        }
+                        if (node.data.intermittent == true) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = (node.data.intermittentOnMs ?: 1000).toString(),
+                                    onValueChange = { newVal ->
+                                        newVal.toIntOrNull()?.let {
+                                            onUpdateData(node.data.copy(intermittentOnMs = it))
+                                        }
+                                    },
+                                    label = { Text("On (ms)") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                OutlinedTextField(
+                                    value = (node.data.intermittentOffMs ?: 1000).toString(),
+                                    onValueChange = { newVal ->
+                                        newVal.toIntOrNull()?.let {
+                                            onUpdateData(node.data.copy(intermittentOffMs = it))
+                                        }
+                                    },
+                                    label = { Text("Off (ms)") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
                     }
                     FlowNodeType.COMPARISON -> {
                         Text("Operator", style = MaterialTheme.typography.labelMedium)

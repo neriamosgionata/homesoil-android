@@ -8,6 +8,7 @@ import com.homesoil.app.util.ScriptError
 import com.homesoil.app.util.ScriptValidator
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
 
 class ScriptsViewModel(
     private val repository: HomesoilRepository
@@ -24,11 +25,21 @@ class ScriptsViewModel(
     }
 
     fun addScript(title: String, code: String) {
-        repository.addScript(title, code)
+        val script = Script(
+            id = 0,
+            title = title,
+            code = code,
+            schedule = null,
+            status = 0,
+            createdAt = LocalDateTime.now().toString()
+        )
+        repository.addScript(script)
     }
 
     fun modifyScript(scriptId: Int, title: String, code: String) {
-        repository.modifyScript(scriptId, title, code)
+        repository.scripts.value[scriptId]?.let { script ->
+            repository.modifyScript(script.copy(title = title, code = code))
+        }
     }
 
     fun removeScript(scriptId: Int) {
@@ -36,11 +47,15 @@ class ScriptsViewModel(
     }
 
     fun addSchedule(scriptId: Int, schedule: String) {
-        repository.addScriptSchedule(scriptId, schedule)
+        repository.scripts.value[scriptId]?.let { script ->
+            repository.addScriptSchedule(script.copy(schedule = schedule))
+        }
     }
 
     fun removeSchedule(scriptId: Int) {
-        repository.removeScriptSchedule(scriptId)
+        repository.scripts.value[scriptId]?.let { script ->
+            repository.removeScriptSchedule(script)
+        }
     }
 }
 
@@ -99,19 +114,37 @@ class ScriptEditorViewModel(
         if (_title.value.isBlank() || _code.value.isBlank()) return
 
         if (scriptId == null) {
-            repository.addScript(_title.value, _code.value)
+            val script = Script(
+                id = 0,
+                title = _title.value,
+                code = _code.value,
+                schedule = _schedule.value.takeIf { it.isNotBlank() },
+                status = 0,
+                createdAt = LocalDateTime.now().toString()
+            )
+            repository.addScript(script)
         } else {
-            repository.modifyScript(scriptId, _title.value, _code.value)
+            repository.scripts.value[scriptId]?.let { script ->
+                repository.modifyScript(
+                    script.copy(
+                        title = _title.value,
+                        code = _code.value,
+                        schedule = _schedule.value.takeIf { it.isNotBlank() }
+                    )
+                )
+            }
         }
         onSaved()
     }
 
     fun saveSchedule() {
         scriptId?.let { id ->
-            if (_schedule.value.isNotBlank()) {
-                repository.addScriptSchedule(id, _schedule.value)
-            } else {
-                repository.removeScriptSchedule(id)
+            repository.scripts.value[id]?.let { script ->
+                if (_schedule.value.isNotBlank()) {
+                    repository.addScriptSchedule(script.copy(schedule = _schedule.value))
+                } else {
+                    repository.removeScriptSchedule(script)
+                }
             }
         }
     }
